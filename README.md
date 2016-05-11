@@ -5,9 +5,9 @@ A (theoretical) exploration of a Concurrent HashMap using the Actor Pattern.
 I'm looking at doing these things:
 - [x] Support `get`, `set` and `delete` operations on the HashMap. (Keys can only be integers for now)
 - [x] All requests should only be blocking until they're dispatched off to corresponding bucket.
-- [ ] Buckets should resize(and rehash) when their `@max_limit` is reached, while maintaining correctness in any order of `get` and `set`.
+- [x] Buckets should resize(and rehash) when their `@max_limit` is reached, while maintaining correctness in any order of `get` and `set`.
 - [ ] Batched reads in a bucket so that list traversal is minimised.
-- [ ] Benchmark/compare with other implementations.
+- [x] Benchmark/compare with other implementations.
 
 ## How to run
 
