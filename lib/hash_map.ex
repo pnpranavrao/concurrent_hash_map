@@ -21,11 +21,13 @@ defmodule HashMap do
 
   #Callbacks
   def init([]) do
+    {:ok, counter} = Counter.start_link
     state = %{
       bucket_count: @bucket_count,
-      buckets: init_buckets(@bucket_count, 0),
+      buckets: init_buckets(@bucket_count, 0, counter),
       overfill_count: 0, # No. of buckets overfilled.
-      generation: 0
+      generation: 0,
+      counter: counter
     }
     {:ok, state}
   end
@@ -75,11 +77,12 @@ defmodule HashMap do
   end
 
   #Helper functions
-  def init_buckets(count, generation) do
+  def init_buckets(count, generation, counter) do
     (1..count)
     |> Enum.map(fn _i ->
-      {:ok, bucket_pid} = Bucket.start_link({:parent_pid, self()},
-                             {:generation, generation})
+      {:ok, bucket_pid} = Bucket.start_link([{:parent_pid, self()},
+                             {:generation, generation},
+                             {:counter, counter}])
       bucket_pid
     end)
     |> List.to_tuple
@@ -98,14 +101,14 @@ defmodule HashMap do
   def rehash(state) do
     IO.inspect "Rehashing to #{state[:bucket_count]*2}"
     new_bucket_count = state[:bucket_count]*2
-    new_buckets = init_buckets(new_bucket_count, state[:generation]+1)
+    new_buckets = init_buckets(new_bucket_count, state[:generation]+1, state[:counter])
     Tuple.to_list(state[:buckets])
     |> Enum.each(fn(bucket) ->
       GenServer.call(bucket, {:dump_all})
       |> Enum.each(fn({key, val}) ->
         new_bucket_id = hash_function(key, new_bucket_count)
         new_bucket = elem(new_buckets, new_bucket_id)
-        GenServer.cast(new_bucket, {:set, key, val})
+        GenServer.cast(new_bucket, {:re_set, key, val})
       end)
       GenServer.cast(bucket, {:stop})
     end)
@@ -115,7 +118,8 @@ defmodule HashMap do
       buckets: new_buckets,
       bucket_count: new_bucket_count,
       overfill_count: 0,
-      generation: state[:generation] + 1
+      generation: state[:generation] + 1,
+      counter: state[:counter]
     }
   end
 end

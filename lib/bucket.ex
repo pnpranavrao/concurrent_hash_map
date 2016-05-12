@@ -3,17 +3,18 @@ defmodule Bucket do
   @max_limit 10 #Max length of List in a bucket
 
   #Client functions
-  def start_link({:parent_pid, parent}, {:generation, generation}) do
-    GenServer.start_link(__MODULE__, [{:parent_pid, parent}, {:generation, generation}])
+  def start_link(args) do
+    GenServer.start_link(__MODULE__, args)
   end
 
   #Callbacks
-  def init([{:parent_pid, pid}, {:generation, generation}]) do
+  def init([{:parent_pid, pid}, {:generation, generation}, {:counter, counter}]) do
     state = %{
       list: [],
       parent_pid: pid,
       element_count: 0,
-      generation: generation
+      generation: generation,
+      counter: counter
    }
    {:ok, state}
   end
@@ -32,15 +33,25 @@ defmodule Bucket do
 
   def handle_cast({:get, key, requester}, state) do
     GenServer.reply(requester, get(key, state))
+    GenServer.cast(state[:counter], :get)
     {:noreply, state}
   end
 
   def handle_cast({:set, key, val}, state) do
     new_state = set({key, val}, state)
+    GenServer.cast(state[:counter], :set)
     {:noreply, new_state}
   end
+
+  #This is for rehashing. Shouldn't be used for
+  def handle_cast({:re_set, key, val}, state) do
+    new_state = set({key, val}, state)
+    {:noreply, new_state}
+  end
+
   def handle_cast({:delete, key}, state) do
     new_state = delete(key, state)
+    GenServer.cast(state[:counter], :delete)
     {:noreply, new_state}
   end
 
